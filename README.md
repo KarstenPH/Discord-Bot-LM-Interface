@@ -6,7 +6,9 @@ This repo contains both a Terminal version and a Discord bot compatible with the
 [Kotlin Variant](https://github.com/KarstenPH/Discord-Bot-LM-Interface/tree/kotlin): [@Superbox2147](https://github.com/Superbox2147)
 
 Other Variants:
+
 (Legacy, for archiving only) [**Terminal Only Variant**](https://github.com/KarstenPH/Discord-Bot-LM-Interface/tree/terminal): [@KarstenPH](https://github.com/KarstenPH)
+
 (Incomplete and Private) Python Variant: [@fily.gif](https://github.com/fily-gif), [@KarstenPH](https://github.com/KarstenPH), & [@neurofumo (promote)](https://github.com/neurofumo)
 
 
