@@ -13,18 +13,8 @@ Other Variants:
 
 
 # Features
-Do note some of these are planned features!
-- Grab either the Username or Nickname (Server or Default) from the chatter
 - Support for conversation logs as text files with basic formatting
-- Blacklisting with Bot Timeout support
-
-Features that might not work:
-- Multiple Conversations at once (One conversation at once, but no user amount limit)
-
-
-# Documentation
-
-Documentation (in simple and short terms) can be found below, But if you are a bit lost, confused, or want to change parameters, refer to the code itself
+- Lightweight
 
 ## Requirements:
 1. [Oobabooga/Text Generation WebUI](https://github.com/oobabooga/text-generation-webui)
