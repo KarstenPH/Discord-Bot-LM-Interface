@@ -11,11 +11,8 @@ def is_windows():
 
 if not is_windows():
 
-    print('''
-Sorry, but this script can't run on your machine!
-This code is for Windows based operating systems only! (for now)\n\n
-    (i) For Linux users, Wine might work, however because the file systems are very different expect a ton of bugs.
-        ''')
+    print('''This program was not designed for your operating system.
+Instability is to be expected''')
     exit()
 
 
@@ -39,7 +36,7 @@ def fallback(e: str): # e = error
 
     with open(os.path.join(scriptdir, r"\/CharacterName.LLMD"), "r") as n:
         charname = n.read()
-
+# Note: Fallback detection never works, not going to bother fixing it cause it is being archived
 
 try:
 
@@ -57,10 +54,8 @@ except Exception as e:
 
 Username = "Bluro"
 
-print('''
+print('''Before anything happens, if you haven't set up the code yet, please open the Python file in your text editor of choice and adjust your settings BEFORE restarting to use it
 Remember, you can reset the LLM conversation using `!LLM reset`. You can also shut me down by doing `!LLM stop`.
-\n
-Do note this means that the person hosting the python file will need to restart it manually! be careful with what you're doing
 ''')
 
 scriptdir2 = os.path.dirname(os.path.abspath(__file__))
@@ -82,9 +77,7 @@ def rename_log_file():
             print(f'''
 That's weird...
 Log file doesn't exist, or a weird error has occured within the code...
-there may be something severely wrong with the code, or the dependencies in it!
-\n
-Please ping the owner of the bot!\n\n{e}
+there may be something severely wrong with the code, or the dependencies in i!t\n\n{e}
               ''')
 
 
@@ -92,7 +85,7 @@ log_renamed = False
 
 def handle_stop(user_input):
     if user_input == "!LLM stop":
-        print("The code for the bot is shutting down. Please ping the host if you wish to restart it.")
+        print("Shutting down.")
         exit()
 
 
