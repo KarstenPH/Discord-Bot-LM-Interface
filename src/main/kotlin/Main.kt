@@ -178,8 +178,9 @@ suspend fun main() {
                 }
             }
         } catch (e: Exception) {
+            println(e.toString())
             for (i in e.stackTrace) println(i.toString())
-            println(e.toString())}
+            }
         }
     println("ready")
     println("Logging in as ${kord!!.getSelf().username}")
