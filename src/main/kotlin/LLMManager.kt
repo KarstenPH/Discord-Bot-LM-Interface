@@ -9,8 +9,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.*
 
 class LLMManager {
-    private var typingRoutineActive = false
-
     suspend fun onCommand(message: Message, messageContents: List<String>) {
         if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
             println("Blocked user ${message.author!!.username} tried to talk to the bot")
