@@ -143,7 +143,7 @@ class LLMManager {
                         return@async Json.decodeFromString<JsonObject>(response.body!!.string()).jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim()
                     }
                 }.await()
-                typing.cancel()
+                typing.cancelAndJoin()
                 return@runBlocking response
             }
         } catch(e: Exception) {

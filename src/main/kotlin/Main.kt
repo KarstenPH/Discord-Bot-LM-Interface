@@ -32,12 +32,15 @@ val filter = FilterManager()
 val strictFiltering = try { dotenv["STRICT_FILTERING"].toBooleanStrictOrNull()!! } catch (e: NullPointerException) { throw Exception("NonBooleanStrictFilteringException") }
 val allowDMs = dotenv["ALLOW_DMS"].toBooleanStrictOrNull() ?: false
 val botStatus = getStatus()
+var loginAgain = true
+var restartBot = false
+const val botVersion = "Discord bot LMI by Superbox\nV1.0.1\n"
 
 suspend fun main() {
+    println("Starting $botVersion")
     if (dotenv["TRUNCATION_LENGTH"].toIntOrNull() == null) throw Exception("InvalidTruncationLengthException")
     if (llmUrl == null || llmUrl == "") throw Exception("NoLLLMURLException")
     if (owners.isEmpty()) throw Exception("NoOwnersException")
-    println("Token: $botToken")
     println("Owners: $owners")
     println("LLMUrl: $llmUrl")
     if (!File("./src/Logs").exists()) File("./src/Logs").mkdir()
@@ -123,6 +126,8 @@ suspend fun main() {
                             "reset" -> commandManager.reset(message)
                             "stop" -> commandManager.stop(message)
                             "continue" -> commandManager.continueCmd(message)
+                            "relog" -> commandManager.relog(message)
+                            "restart" -> commandManager.restart(message)
                             else -> LLM.onCommand(message, messageContent)
                         }
                     } else LLM.onCommand(message, messageContent)
@@ -183,16 +188,26 @@ suspend fun main() {
             }
         }
     println("ready")
-    println("Logging in as ${kord!!.getSelf().username}")
-    kord!!.login {
-        @OptIn(PrivilegedIntent::class)
-        intents += Intent.MessageContent
-        presence {
-            status = botStatus.first
-            playing(botStatus.second)
+    while (loginAgain) {
+        println("Logging in as ${kord!!.getSelf().username}")
+        kord!!.login {
+            @OptIn(PrivilegedIntent::class)
+            intents += Intent.MessageContent
+            presence {
+                status = botStatus.first
+                playing(botStatus.second)
+            }
         }
     }
     println("logged out")
+    if (restartBot) {
+        println("restarting...")
+        runBlocking {
+            ProcessBuilder("java", "-jar", "LLMKotlin.jar").redirectOutput(ProcessBuilder.Redirect.INHERIT)
+                .redirectError(ProcessBuilder.Redirect.INHERIT).start().waitFor()
+        }
+        println("exit hosting (probably broken) layer")
+    }
 }
 
 suspend fun checkPermissions(message: Message): Boolean {
