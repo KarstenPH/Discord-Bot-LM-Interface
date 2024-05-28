@@ -8,6 +8,9 @@ import dev.kord.core.event.message.*
 import dev.kord.gateway.*
 import java.io.*
 import io.github.cdimascio.dotenv.dotenv
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
@@ -36,6 +39,7 @@ var loginAgain = true
 var restartBot = false
 const val botVersion = "Discord bot LMI by Superbox\nV1.1.0\n"
 
+@OptIn(ExperimentalCoroutinesApi::class)
 suspend fun main() {
     println("Starting $botVersion")
     if (dotenv["TRUNCATION_LENGTH"].toIntOrNull() == null) throw Exception("InvalidTruncationLengthException")
@@ -69,8 +73,9 @@ suspend fun main() {
     if (botToken == null || botToken == "") {
         throw Exception("NoBotTokenException")
     }
+    val nonParallelDispatcher = Dispatchers.Default.limitedParallelism(1)
     kord = Kord(botToken)
-    kord!!.on<ReactionAddEvent> {
+    kord!!.on<ReactionAddEvent>(CoroutineScope(nonParallelDispatcher)) {
         if (messageAuthorId.toString() == kord.selfId.toString()) {
             if (emoji == ReactionEmoji.Unicode("❌")) {
                 for (i in message.getReactors(emoji).toList()) {
@@ -96,7 +101,7 @@ suspend fun main() {
             }
         }
     }
-    kord!!.on<MessageCreateEvent> {
+    kord!!.on<MessageCreateEvent>(CoroutineScope(nonParallelDispatcher)) {
         if (message.channel.asChannel().type == ChannelType.DM && !allowDMs)
             return@on
         if (message.author?.id == kord.selfId)
@@ -185,8 +190,8 @@ suspend fun main() {
         } catch (e: Exception) {
             println(e.toString())
             for (i in e.stackTrace) println(i.toString())
-            }
         }
+    }
     println("ready")
     while (loginAgain) {
         println("Logging in as ${kord!!.getSelf().username}")
