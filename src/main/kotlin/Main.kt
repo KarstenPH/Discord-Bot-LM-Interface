@@ -14,21 +14,14 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
-import okhttp3.*
-import java.util.concurrent.*
 
 val dotenv = dotenv()
 val botToken: String? = dotenv["TOKEN"]
 val owners = Json.decodeFromString<JsonArray>(dotenv["OWNERS"])
 val llmUrl: String? = dotenv["LLMURL"]
 var kord: Kord? = null
-val client = OkHttpClient.Builder().connectTimeout(1, TimeUnit.DAYS).writeTimeout(1, TimeUnit.DAYS).readTimeout(1, TimeUnit.DAYS).callTimeout(1,TimeUnit.DAYS).build()
-val llmConfig = Json.decodeFromString<JsonObject>(File("./src/config.json").readText())
-val prompt = File("./src/SystemPrompt.LLMD").readText() + "\n" + File("./src/Character/CharacterInfo.LLMD").readText()
-val charName = File("./src/Character/CharacterName.LLMD").readText()
-val greeting = File("./src/Character/Greeting.LLMD").readText()
 var blockList = Json.decodeFromString<JsonArray>("[]")
-val commandManager = CommandManager()
+val callCommand = CallCommand()
 val LLM = LLMManager()
 var ignoreNext = false
 val filter = FilterManager()
@@ -37,7 +30,10 @@ val allowDMs = dotenv["ALLOW_DMS"].toBooleanStrictOrNull() ?: false
 val botStatus = getStatus()
 var loginAgain = true
 var restartBot = false
-const val botVersion = "Discord bot LMI by Superbox\nV1.1.0\n"
+val funCommands = FunCommands()
+val debugCommands = DebugCommands()
+val managementCommands = ManagementCommands()
+const val botVersion = "Discord bot LMI by Superbox\nV1.2.0\n"
 
 @OptIn(ExperimentalCoroutinesApi::class)
 suspend fun main() {
@@ -111,28 +107,30 @@ suspend fun main() {
             return@on
         try {
             when (messageContent[0].lowercase()) {
-                "!ping" -> commandManager.ping(message)
-                "!debug" -> commandManager.debug(message)
-                "!bonk" -> commandManager.bonk(message, messageContent)
-                "!reset" -> commandManager.reset(message)
-                "!stop" -> commandManager.stop(message)
-                "!continue" -> commandManager.continueCmd(message)
+                "!ping" -> debugCommands.ping(message)
+                "!debug" -> debugCommands.debug(message)
+                "!bonk" -> funCommands.bonk(message, messageContent)
+                "!reset" -> managementCommands.reset(message)
+                "!stop" -> debugCommands.stop(message)
+                "!continue" -> LLM.continueCmd(message)
                 "!echo" -> {
                     if (messageContent.size >= 2) {
-                        commandManager.echo(message, messageContent)
+                        funCommands.echo(message, messageContent)
                     } else {
                         reply(message, "You must specify a message to echo")
                     }
                 }
 
                 "!llm" -> {
-                    if (messageContent.size == 2) {
+                    if (messageContent.size == 3 && messageContent[1].lowercase() == "call") {
+                        callCommand.call(message)
+                    } else if (messageContent.size == 2) {
                         when (messageContent[1].lowercase()) {
-                            "reset" -> commandManager.reset(message)
-                            "stop" -> commandManager.stop(message)
-                            "continue" -> commandManager.continueCmd(message)
-                            "relog" -> commandManager.relog(message)
-                            "restart" -> commandManager.restart(message)
+                            "reset" -> managementCommands.reset(message)
+                            "stop" -> debugCommands.stop(message)
+                            "continue" -> LLM.continueCmd(message)
+                            "relog" -> debugCommands.relog(message)
+                            "restart" -> debugCommands.restart(message)
                             else -> LLM.onCommand(message, messageContent)
                         }
                     } else LLM.onCommand(message, messageContent)
@@ -143,8 +141,8 @@ suspend fun main() {
                         try {
                             if (checkPermissions(message)) {
                                 when (messageContent[1].lowercase()) {
-                                    "add" -> commandManager.blocklistAdd(message, messageContent[2])
-                                    "remove" -> commandManager.blocklistRemove(message, messageContent[2])
+                                    "add" -> managementCommands.blocklistAdd(message, messageContent[2])
+                                    "remove" -> managementCommands.blocklistRemove(message, messageContent[2])
                                 }
                             } else {
                                 message.channel.createMessage("Sorry, but you do not have the correct permission to do so.")
@@ -173,17 +171,13 @@ suspend fun main() {
                             ignoreNext = false
                             return@on
                         }
-                        val botResponse = LLM.onPing(message)
-                        println("$charName: $botResponse")
-                        reply(message, botResponse)
+                        LLM.onPing(message)
                     } else if (message.referencedMessage?.author?.id == kord.selfId) {
                         if (ignoreNext) {
                             ignoreNext = false
                             return@on
                         }
-                        val botResponse = LLM.onPing(message)
-                        println("$charName: $botResponse")
-                        reply(message, botResponse)
+                        LLM.onPing(message)
                     }
                 }
             }

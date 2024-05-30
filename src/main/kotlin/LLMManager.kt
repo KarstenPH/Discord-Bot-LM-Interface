@@ -4,11 +4,25 @@ import dev.kord.core.entity.Message
 import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.*
+import java.util.concurrent.TimeUnit
 
 class LLMManager {
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(1, TimeUnit.DAYS)
+        .writeTimeout(1, TimeUnit.DAYS)
+        .readTimeout(1, TimeUnit.DAYS)
+        .callTimeout(1, TimeUnit.DAYS)
+        .build()
+    private val llmConfig = Json.decodeFromString<JsonObject>(File("./src/config.json").readText())
+    private val prompt = File("./src/SystemPrompt.LLMD").readText() + "\n" + File("./src/Character/CharacterInfo.LLMD").readText()
+
+    val charName = File("./src/Character/CharacterName.LLMD").readText()
+    val greeting = File("./src/Character/Greeting.LLMD").readText()
+
     suspend fun onCommand(message: Message, messageContents: List<String>) {
         if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
             println("Blocked user ${message.author!!.username} tried to talk to the bot")
@@ -22,13 +36,28 @@ class LLMManager {
         reply(message, botResponse)
     }
 
-    suspend fun onPing(message: Message): String {
+    suspend fun onPing(message: Message) {
         if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
             println("Blocked user ${message.author!!.username} tried to talk to the bot")
-            return "You are blocked from using that"
+            reply(message,"You are blocked from using that")
+            return
         }
         println("${message.author!!.username}: \"${message.content.removePrefix("<@${kord?.selfId}>").trim()}\"")
-        return try {generation(message.content.removePrefix("<@${kord?.selfId}>").trim(), message.author!!.username, message)} catch (e: IOException) {e.toString()}
+        val botResponse = try {generation(message.content.removePrefix("<@${kord?.selfId}>").trim(), message.author!!.username, message)} catch (e: IOException) {e.toString()}
+        println("$charName: $botResponse")
+        reply(message, botResponse)
+    }
+
+    suspend fun continueCmd(message: Message) {
+        if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
+            println("Blocked user ${message.author!!.username} tried to continue generation")
+            message.channel.createMessage("You are blocked from using that")
+            return
+        }
+        println("${message.author!!.username} continued the generation")
+        val botResponse = LLM.generationContinue(message)
+        println("$charName: $botResponse")
+        reply(message, botResponse)
     }
 
     private suspend fun generation(userMessage: String, user: String, message: Message): String {
@@ -138,7 +167,8 @@ class LLMManager {
                             .build()
                     client.newCall(request).execute().use { response ->
                         if (!response.isSuccessful) throw IOException("Unexpected code $response")
-                        return@async Json.decodeFromString<JsonObject>(response.body!!.string()).jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim()
+                        val responseJson = Json.decodeFromString<JsonObject>(response.body!!.string())
+                        return@async responseJson.jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim()
                     }
                 }.await()
                 typing.cancelAndJoin()
