@@ -33,6 +33,7 @@ var restartBot = false
 val funCommands = FunCommands()
 val debugCommands = DebugCommands()
 val managementCommands = ManagementCommands()
+val commandIdentifier = if (dotenv["COMMAND_IDENTIFIER"] != null) { dotenv["COMMAND_IDENTIFIER"].lowercase() } else "!llm"
 const val botVersion = "Discord bot LMI by Superbox\nV1.2.0\n"
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -109,11 +110,11 @@ suspend fun main() {
             when (messageContent[0].lowercase()) {
                 "!ping" -> debugCommands.ping(message)
                 "!debug" -> debugCommands.debug(message)
-                "!bonk" -> funCommands.bonk(message, messageContent)
-                "!reset" -> managementCommands.reset(message)
-                "!stop" -> debugCommands.stop(message)
-                "!continue" -> LLM.continueCmd(message)
-                "!echo" -> {
+                "bonk$commandIdentifier" -> funCommands.bonk(message, messageContent)
+                "reset$commandIdentifier" -> managementCommands.reset(message)
+                "stop$commandIdentifier" -> debugCommands.stop(message)
+                "continue$commandIdentifier" -> LLM.continueCmd(message)
+                "echo$commandIdentifier" -> {
                     if (messageContent.size >= 2) {
                         funCommands.echo(message, messageContent)
                     } else {
@@ -121,7 +122,7 @@ suspend fun main() {
                     }
                 }
 
-                "!llm" -> {
+                commandIdentifier -> {
                     if (messageContent.size == 3 && messageContent[1].lowercase() == "call") {
                         callCommand.call(message)
                     } else if (messageContent.size == 2) {
@@ -136,7 +137,7 @@ suspend fun main() {
                     } else LLM.onCommand(message, messageContent)
                 }
 
-                "!blocklist" -> {
+                "blocklist$commandIdentifier" -> {
                     if (messageContent.size == 3) {
                         try {
                             if (checkPermissions(message)) {
@@ -153,11 +154,11 @@ suspend fun main() {
                             message.channel.createMessage("Checking permissions failed: NullPointerException")
                         }
                     } else {
-                        message.channel.createMessage("Command has an incorrect amount of parameters, expecting '!blocklist add/remove USER'")
+                        message.channel.createMessage("Command has an incorrect amount of parameters, expecting 'blocklist$commandIdentifier add/remove USER'")
                     }
                 }
 
-                "!filter" -> {
+                "filter$commandIdentifier" -> {
                     if (messageContent.size >= 3) {
                         if (messageContent[1].lowercase() == "toggle") {
                             filter.toggleFilter(messageContent.drop(2).joinToString(" "), message)

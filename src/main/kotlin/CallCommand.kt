@@ -13,7 +13,7 @@ class CallCommand {
                     message.channel.createMessage("Invalid uID, uID should be numeric.")
                 }
             } else {
-                message.channel.createMessage("Invalid command arguments, expected '!llm call [uID]'")
+                message.channel.createMessage("Invalid command arguments, expected '$commandIdentifier call [uID]'")
             }
         } else {
             message.channel.createMessage("Sorry, but you do not have the correct permissions to use that.")

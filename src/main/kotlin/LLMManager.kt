@@ -39,7 +39,7 @@ class LLMManager {
     suspend fun onPing(message: Message) {
         if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
             println("Blocked user ${message.author!!.username} tried to talk to the bot")
-            reply(message,"You are blocked from using that")
+            message.channel.createMessage("You are blocked from using that")
             return
         }
         println("${message.author!!.username}: \"${message.content.removePrefix("<@${kord?.selfId}>").trim()}\"")
@@ -181,7 +181,7 @@ class LLMManager {
         }
     }
 
-    suspend fun generationContinue(message: Message): String {
+    private suspend fun generationContinue(message: Message): String {
         val ctxTruncation = dotenv["CTX_TRUNCATION"].toIntOrNull() ?: -1
         val truncationLength = dotenv["TRUNCATION_LENGTH"].toIntOrNull() ?: -1
         val maxStreak = dotenv["MAX_NEWLINE_STREAK"].toIntOrNull() ?: -1
