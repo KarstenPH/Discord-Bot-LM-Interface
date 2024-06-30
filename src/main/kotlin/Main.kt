@@ -34,6 +34,7 @@ val funCommands = FunCommands()
 val debugCommands = DebugCommands()
 val managementCommands = ManagementCommands()
 val commandIdentifier = if (dotenv["COMMAND_IDENTIFIER"] != null) { dotenv["COMMAND_IDENTIFIER"].lowercase() } else "!llm"
+val channelBlocklist = createChannelBlocklist()
 const val botVersion = "Discord bot LMI by Superbox\nV1.2.0\n"
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -73,6 +74,8 @@ suspend fun main() {
     val nonParallelDispatcher = Dispatchers.Default.limitedParallelism(1)
     kord = Kord(botToken)
     kord!!.on<ReactionAddEvent>(CoroutineScope(nonParallelDispatcher)) {
+        if (channelBlocklist.contains(Json.encodeToJsonElement(message.channel.id.toString())))
+            return@on
         if (messageAuthorId.toString() == kord.selfId.toString()) {
             if (emoji == ReactionEmoji.Unicode("❌")) {
                 for (i in message.getReactors(emoji).toList()) {
@@ -99,6 +102,8 @@ suspend fun main() {
         }
     }
     kord!!.on<MessageCreateEvent>(CoroutineScope(nonParallelDispatcher)) {
+        if (channelBlocklist.contains(Json.encodeToJsonElement(message.channel.id.toString())))
+            return@on
         if (message.channel.asChannel().type == ChannelType.DM && !allowDMs)
             return@on
         if (message.author?.id == kord.selfId)
@@ -219,9 +224,38 @@ suspend fun checkPermissions(message: Message): Boolean {
 }
 
 suspend fun reply(message: Message, input: String) {
-    message.reply {
-        content = input
+    if (input.length <= 2000){
+        message.reply {
+            content = input
+        }
+    } else {
+        val inputStrings = splitByCharacterCount(input, 2000)
+        for (i in inputStrings) {
+            message.channel.createMessage(i)
+        }
     }
+}
+
+fun splitByCharacterCount(input: String, characterCount: Int): List<String> {
+    if (input.length <= characterCount) {
+        return listOf(input)
+    }
+    val output = mutableListOf<String>()
+    var temp = ""
+    var index = 0
+    for (character in input) {
+        index++
+        if (output.size * characterCount + characterCount >= input.length) {
+            output.add(input.substring(index - 1))
+            break
+        }
+        temp += character
+        if (temp.length >= characterCount) {
+            output.add(temp)
+            temp = ""
+        }
+    }
+    return output
 }
 
 fun getStatus(): Pair<PresenceStatus, String> {
@@ -237,4 +271,12 @@ fun getStatus(): Pair<PresenceStatus, String> {
     }
     val presence = dotenv["PRESENCE"] ?: "Chat with !LLM"
     return Pair(status, presence)
+}
+
+fun createChannelBlocklist(): JsonArray {
+    return if (dotenv["BLOCKED_CHANNELS"] != null) {
+        Json.decodeFromString<JsonArray>(dotenv["BLOCKED_CHANNELS"])
+    } else {
+        JsonArray(listOf())
+    }
 }
