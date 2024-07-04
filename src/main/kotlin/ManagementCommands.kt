@@ -2,9 +2,6 @@ package org.bot
 
 import dev.kord.core.entity.Message
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.jsonArray
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -38,48 +35,6 @@ class ManagementCommands {
         } else {
             message.channel.createMessage("Sorry, but you do not have the correct permission to do so.")
             println("${message.author?.username} tried to reset the LLM, but they lack the permission to do so!\\nThe UserID need to be in the `.env` file in the `OWNERS` variable for them to gain the right permissions. Skill issue.")
-        }
-    }
-
-    suspend fun blocklistAdd(message: Message, uID: String) {
-        val userToBlock = uID.removePrefix("<@").removeSuffix(">")
-        if (userToBlock.toDoubleOrNull() == null) {
-            message.channel.createMessage("<@${message.author!!.id}> Invalid uID provided")
-            return
-        }
-        val blockListMutable = blockList.toMutableList()
-        if (blockList.contains<Any?>(Json.encodeToJsonElement(userToBlock))) {
-            message.channel.createMessage("User with userID $userToBlock (@silent <@uID>) is already part of the blocklist")
-            println("${message.author!!.username} tried to add $userToBlock to the blocklist again. He must hate that guy.")
-        } else {
-            blockListMutable.addLast(Json.encodeToJsonElement(userToBlock))
-            message.channel.createMessage("User with userID $userToBlock (@silent <@uID>) added to the blocklist")
-            println("${message.author!!.username} successfully added $userToBlock to the blocklist.")
-        }
-        blockList = Json.encodeToJsonElement(blockListMutable).jsonArray
-        File("./src/Blocklist.json").printWriter().use {
-            it.println(blockList)
-        }
-    }
-
-    suspend fun blocklistRemove(message: Message, uID: String) {
-        val userToRemove = uID.removePrefix("<@").removeSuffix(">")
-        if (userToRemove.toDoubleOrNull() == null) {
-            message.channel.createMessage("<@${message.author!!.id}> Invalid uID provided")
-            return
-        }
-        if (!blockList.contains<Any?>(Json.encodeToJsonElement(userToRemove))) {
-            message.channel.createMessage("$userToRemove is not in the blocklist")
-            println("${message.author!!.username} tried to remove $userToRemove from the blocklist when he's not in it.")
-        } else {
-            val blockListMutable = blockList.toMutableList()
-            blockListMutable.remove(Json.encodeToJsonElement(userToRemove))
-            message.channel.createMessage("User with userID $userToRemove (@silent <@uID>) removed from the blocklist")
-            println("${message.author!!.username} successfully removed $userToRemove from the blocklist.")
-            blockList = Json.encodeToJsonElement(blockListMutable).jsonArray
-        }
-        File("./src/Blocklist.json").printWriter().use {
-            it.println(blockList)
         }
     }
 }

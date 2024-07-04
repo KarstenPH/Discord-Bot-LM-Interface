@@ -24,7 +24,7 @@ class LLMManager {
     val greeting = File("./src/Character/Greeting.LLMD").readText()
 
     suspend fun onCommand(message: Message, messageContents: List<String>) {
-        if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
+        if (blocklistUIDs.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
             println("Blocked user ${message.author!!.username} tried to talk to the bot")
             message.channel.createMessage("You are blocked from using that")
             return
@@ -37,7 +37,7 @@ class LLMManager {
     }
 
     suspend fun onPing(message: Message) {
-        if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
+        if (blocklistUIDs.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
             println("Blocked user ${message.author!!.username} tried to talk to the bot")
             message.channel.createMessage("You are blocked from using that")
             return
@@ -49,7 +49,7 @@ class LLMManager {
     }
 
     suspend fun continueCmd(message: Message) {
-        if (blockList.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
+        if (blocklistUIDs.contains<Any?>(Json.encodeToJsonElement(message.author?.id.toString()))) {
             println("Blocked user ${message.author!!.username} tried to continue generation")
             message.channel.createMessage("You are blocked from using that")
             return

@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.*
 
 val dotenv = dotenv()
@@ -20,7 +21,8 @@ val botToken: String? = dotenv["TOKEN"]
 val owners = Json.decodeFromString<JsonArray>(dotenv["OWNERS"])
 val llmUrl: String? = dotenv["LLMURL"]
 var kord: Kord? = null
-var blockList = Json.decodeFromString<JsonArray>("[]")
+var blockList: JsonObject = Json.decodeFromString<JsonObject>("{\"blocklistEntries\": []}")
+var blocklistUIDs: JsonArray = Json.decodeFromString<JsonArray>("[]")
 val callCommand = CallCommand()
 val LLM = LLMManager()
 var ignoreNext = false
@@ -35,6 +37,7 @@ val debugCommands = DebugCommands()
 val managementCommands = ManagementCommands()
 val commandIdentifier = if (dotenv["COMMAND_IDENTIFIER"] != null) { dotenv["COMMAND_IDENTIFIER"].lowercase() } else "!llm"
 val channelBlocklist = createChannelBlocklist()
+val blocklistManager = BlocklistManager()
 const val botVersion = "Discord bot LMI by Superbox\nV1.2.0\n"
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -47,16 +50,24 @@ suspend fun main() {
     println("LLMUrl: $llmUrl")
     if (!File("./src/Logs").exists()) File("./src/Logs").mkdir()
     if (File("./src/Blocklist.json").exists()) {
-        blockList = Json.decodeFromString<JsonArray>(File("./src/Blocklist.json").readText())
+        try {
+            blockList = Json.decodeFromString<JsonObject>(File("./src/Blocklist.json").readText())
+        } catch (e: SerializationException) {
+            //upgrade the blocklist data to the new format
+            upgradeBlocklist()
+            blockList = Json.decodeFromString<JsonObject>(File("./src/Blocklist.json").readText())
+        }
     } else {
         runBlocking {
             File("./src/Blocklist.json").createNewFile()
             File("./src/Blocklist.json").printWriter().use {
-                it.print("[]")
+                it.print("{\"blocklistEntries\": []}")
             }
             println("Created new blocklist file")
+            blockList = Json.decodeFromString<JsonObject>(File("./src/Blocklist.json").readText())
         }
     }
+    buildBlocklistUIDs()
     if (!File("./src/Usernames.json").exists()) {
         runBlocking {
             File("./src/Usernames.json").createNewFile()
@@ -66,7 +77,7 @@ suspend fun main() {
             println("Created new usernames file")
         }
     }
-    println("Blocked users: $blockList")
+    println("Blocked users: $blocklistUIDs")
     filter.buildFilterMap()
     if (botToken == null || botToken == "") {
         throw Exception("NoBotTokenException")
@@ -147,8 +158,9 @@ suspend fun main() {
                         try {
                             if (checkPermissions(message)) {
                                 when (messageContent[1].lowercase()) {
-                                    "add" -> managementCommands.blocklistAdd(message, messageContent[2])
-                                    "remove" -> managementCommands.blocklistRemove(message, messageContent[2])
+                                    "add" -> blocklistManager.blocklistAdd(message, messageContent[2])
+                                    "remove" -> blocklistManager.blocklistRemove(message, messageContent[2])
+                                    "info" -> blocklistManager.blocklistInfo(message, messageContent[2])
                                 }
                             } else {
                                 message.channel.createMessage("Sorry, but you do not have the correct permission to do so.")
@@ -229,16 +241,61 @@ suspend fun reply(message: Message, input: String) {
             content = input
         }
     } else {
-        val inputStrings = splitByCharacterCount(input, 2000)
+        var inputStrings = splitMaxLengthWithDelimiters(input, 2000, listOf(".", "!", "?", "\n"))
+        message.reply {
+            content = inputStrings[0]
+        }
+        inputStrings =  inputStrings.drop(1).toMutableList()
         for (i in inputStrings) {
             message.channel.createMessage(i)
         }
     }
 }
 
-fun splitByCharacterCount(input: String, characterCount: Int): List<String> {
+fun splitMaxLengthWithDelimiters(input: String, maxLength: Int, delimiters: List<String>): MutableList<String> {
+    if (input.length <= maxLength) {
+        return mutableListOf(input)
+    }
+    val output = mutableListOf<String>()
+    var temp = ""
+    var index = 0
+    for (character in input) {
+        index++
+        if (output.size * maxLength + maxLength - temp.length >= input.length) {
+            output.add(temp + input.substring(index - 1))
+            break
+        }
+        temp += character
+        if (temp.length >= maxLength) {
+            val lastDelimiterIndex = try {
+                findLastDelimiterIndex(temp, delimiters)
+            } catch (e: DelimiterNotFoundException) {
+                temp.length - 1
+            }
+            output.add(temp.substring(0, lastDelimiterIndex + 1))
+            temp = temp.substring(lastDelimiterIndex + 1)
+        }
+    }
+    return output
+}
+
+fun findLastDelimiterIndex(input: String, delimiters: List<String>): Int {
+    val reversedInput = input.reversed()
+    var index = 0
+    for (i in reversedInput) {
+        for (delimiter in delimiters) {
+            if (i.toString() == delimiter) {
+                return input.length - (index + 1)
+            }
+        }
+        index++
+    }
+    throw DelimiterNotFoundException()
+}
+
+fun splitByCharacterCount(input: String, characterCount: Int): MutableList<String> {
     if (input.length <= characterCount) {
-        return listOf(input)
+        return mutableListOf(input)
     }
     val output = mutableListOf<String>()
     var temp = ""
@@ -278,5 +335,29 @@ fun createChannelBlocklist(): JsonArray {
         Json.decodeFromString<JsonArray>(dotenv["BLOCKED_CHANNELS"])
     } else {
         JsonArray(listOf())
+    }
+}
+
+fun upgradeBlocklist() {
+    println("Found outdated blocklist, upgrading...")
+    blockList = buildJsonObject {
+        put("blocklistEntries", buildJsonArray {
+            for (i in Json.decodeFromString<JsonArray>(File("./src/Blocklist.json").readText())) {
+                add(Json.encodeToJsonElement(BlocklistEntry(i.jsonPrimitive.content)))
+            }
+        })
+    }
+    File("./src/Blocklist.json").printWriter().use {
+        it.print(blockList)
+    }
+    println("Blocklist upgrade completed")
+}
+
+fun buildBlocklistUIDs() {
+    blocklistUIDs = buildJsonArray {
+        for (i in blockList["blocklistEntries"]!!.jsonArray) {
+            val entry = Json.decodeFromString<BlocklistEntry>(i.toString())
+            add(entry.uID)
+        }
     }
 }
