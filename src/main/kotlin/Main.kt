@@ -171,7 +171,7 @@ suspend fun main() {
                             message.channel.createMessage("Checking permissions failed: NullPointerException")
                         }
                     } else {
-                        message.channel.createMessage("Command has an incorrect amount of parameters, expecting 'blocklist$commandIdentifier add/remove USER'")
+                        message.channel.createMessage("Command has an incorrect amount of parameters, expecting 'blocklist$commandIdentifier add/remove/info USER'")
                     }
                 }
 
