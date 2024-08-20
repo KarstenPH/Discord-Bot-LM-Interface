@@ -12,6 +12,7 @@ import java.lang.NullPointerException
 import java.util.concurrent.TimeUnit
 
 class LLMManager {
+    private val cleanupRegex = Regex("""\n[^ \n]*:""")
     private val client = OkHttpClient.Builder()
         .connectTimeout(1, TimeUnit.DAYS)
         .writeTimeout(1, TimeUnit.DAYS)
@@ -170,9 +171,9 @@ class LLMManager {
                         if (!response.isSuccessful) throw IOException("Unexpected code $response")
                         val responseJson = Json.decodeFromString<JsonObject>(response.body!!.string())
                         return@async try {
-                            responseJson.jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim()
+                            responseJson.jsonObject["choices"]!!.jsonArray[0].jsonObject["text"]!!.jsonPrimitive.content.trim().split(cleanupRegex)[0]
                         } catch (e: NullPointerException) {
-                            responseJson.jsonObject["content"]!!.jsonPrimitive.content.trim()
+                            responseJson.jsonObject["content"]!!.jsonPrimitive.content.trim().split(cleanupRegex)[0]
                         }
                     }
                 }.await()
